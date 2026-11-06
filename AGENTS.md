@@ -28,3 +28,6 @@ use the editor.
   own key and store it in Secrets.
 - **Secrets.** Lovable manages them. Do not put secret values in the repo.
 <!-- LOVABLE:END -->
+
+- Screens call `src/lib/auth.ts` and `src/lib/data.ts` only; swap their internals for a real backend/AI later without touching screens.
+- PWA is manifest-only (no service worker) until offline support is requested.
