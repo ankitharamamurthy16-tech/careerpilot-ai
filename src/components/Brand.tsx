@@ -1,4 +1,4 @@
-import icon from "/icon-192.png?url";
+const icon = "/icon-192.png";
 
 export function BrandMark({ size = 40 }: { size?: number }) {
   return <img src={icon} width={size} height={size} alt="CareerPilot AI" className="rounded-2xl" style={{ width: size, height: size }} />;
