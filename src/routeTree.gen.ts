@@ -16,6 +16,7 @@ import { Route as RegisterRouteImport } from './routes/register'
 import { Route as AppIndexRouteImport } from './routes/app.index'
 import { Route as AppProfileRouteImport } from './routes/app.profile'
 import { Route as AppProgressRouteImport } from './routes/app.progress'
+import { Route as AppAssessmentQuantMock4RouteImport } from './routes/app.assessment.quant-mock-4'
 import { Route as AppModulesIndexRouteImport } from './routes/app.modules.index'
 import { Route as AppModulesIdRouteImport } from './routes/app.modules.$id'
 
@@ -54,6 +55,11 @@ const AppProgressRoute = AppProgressRouteImport.update({
   path: '/progress',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAssessmentQuantMock4Route = AppAssessmentQuantMock4RouteImport.update({
+  id: '/assessment/quant-mock-4',
+  path: '/assessment/quant-mock-4',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppModulesIndexRoute = AppModulesIndexRouteImport.update({
   id: '/modules/',
   path: '/modules/',
@@ -73,6 +79,7 @@ export interface FileRoutesByFullPath {
   '/app/profile': typeof AppProfileRoute
   '/app/progress': typeof AppProgressRoute
   '/app/': typeof AppIndexRoute
+  '/app/assessment/quant-mock-4': typeof AppAssessmentQuantMock4Route
   '/app/modules/$id': typeof AppModulesIdRoute
   '/app/modules/': typeof AppModulesIndexRoute
 }
@@ -83,6 +90,7 @@ export interface FileRoutesByTo {
   '/app/profile': typeof AppProfileRoute
   '/app/progress': typeof AppProgressRoute
   '/app': typeof AppIndexRoute
+  '/app/assessment/quant-mock-4': typeof AppAssessmentQuantMock4Route
   '/app/modules/$id': typeof AppModulesIdRoute
   '/app/modules': typeof AppModulesIndexRoute
 }
@@ -95,6 +103,7 @@ export interface FileRoutesById {
   '/app/profile': typeof AppProfileRoute
   '/app/progress': typeof AppProgressRoute
   '/app/': typeof AppIndexRoute
+  '/app/assessment/quant-mock-4': typeof AppAssessmentQuantMock4Route
   '/app/modules/$id': typeof AppModulesIdRoute
   '/app/modules/': typeof AppModulesIndexRoute
 }
@@ -108,6 +117,7 @@ export interface FileRouteTypes {
     | '/app/profile'
     | '/app/progress'
     | '/app/'
+    | '/app/assessment/quant-mock-4'
     | '/app/modules/$id'
     | '/app/modules/'
   fileRoutesByTo: FileRoutesByTo
@@ -118,6 +128,7 @@ export interface FileRouteTypes {
     | '/app/profile'
     | '/app/progress'
     | '/app'
+    | '/app/assessment/quant-mock-4'
     | '/app/modules/$id'
     | '/app/modules'
   id:
@@ -129,6 +140,7 @@ export interface FileRouteTypes {
     | '/app/profile'
     | '/app/progress'
     | '/app/'
+    | '/app/assessment/quant-mock-4'
     | '/app/modules/$id'
     | '/app/modules/'
   fileRoutesById: FileRoutesById
@@ -191,6 +203,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProgressRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/assessment/quant-mock-4': {
+      id: '/app/assessment/quant-mock-4'
+      path: '/assessment/quant-mock-4'
+      fullPath: '/app/assessment/quant-mock-4'
+      preLoaderRoute: typeof AppAssessmentQuantMock4RouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/modules/': {
       id: '/app/modules/'
       path: '/modules'
@@ -212,6 +231,7 @@ interface AppRouteChildren {
   AppProfileRoute: typeof AppProfileRoute
   AppProgressRoute: typeof AppProgressRoute
   AppIndexRoute: typeof AppIndexRoute
+  AppAssessmentQuantMock4Route: typeof AppAssessmentQuantMock4Route
   AppModulesIdRoute: typeof AppModulesIdRoute
   AppModulesIndexRoute: typeof AppModulesIndexRoute
 }
@@ -220,6 +240,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppProfileRoute: AppProfileRoute,
   AppProgressRoute: AppProgressRoute,
   AppIndexRoute: AppIndexRoute,
+  AppAssessmentQuantMock4Route: AppAssessmentQuantMock4Route,
   AppModulesIdRoute: AppModulesIdRoute,
   AppModulesIndexRoute: AppModulesIndexRoute,
 }
