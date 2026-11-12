@@ -1,7 +1,15 @@
 import type { ReactNode } from "react";
 import { BrandMark } from "./Brand";
 
-export function AuthShell({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
+export function AuthShell({
+  title,
+  subtitle,
+  children,
+}: {
+  title: string;
+  subtitle: string;
+  children: ReactNode;
+}) {
   return (
     <div className="min-h-dvh bg-background md:flex md:items-center md:justify-center md:bg-hero md:p-8">
       <div className="mx-auto w-full max-w-md overflow-hidden bg-background md:rounded-3xl md:shadow-glow">
@@ -32,7 +40,10 @@ export function Field(props: React.InputHTMLAttributes<HTMLInputElement> & { lab
   );
 }
 
-export function PrimaryButton({ children, ...rest }: React.ButtonHTMLAttributes<HTMLButtonElement>) {
+export function PrimaryButton({
+  children,
+  ...rest
+}: React.ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
     <button
       {...rest}

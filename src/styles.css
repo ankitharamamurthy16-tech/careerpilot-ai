@@ -94,7 +94,12 @@
   --violet: oklch(0.62 0.22 295);
   --success: oklch(0.68 0.16 160);
   --warning: oklch(0.78 0.15 70);
-  --gradient-hero: linear-gradient(140deg, oklch(0.2 0.1 268) 0%, oklch(0.3 0.16 275) 55%, oklch(0.5 0.24 290) 100%);
+  --gradient-hero: linear-gradient(
+    140deg,
+    oklch(0.2 0.1 268) 0%,
+    oklch(0.3 0.16 275) 55%,
+    oklch(0.5 0.24 290) 100%
+  );
   --gradient-primary: linear-gradient(135deg, oklch(0.52 0.24 285), oklch(0.62 0.22 300));
   --shadow-card: 0 8px 24px -12px oklch(0.25 0.1 270 / 0.18);
   --shadow-glow: 0 12px 32px -10px oklch(0.52 0.24 285 / 0.55);
@@ -160,15 +165,51 @@
 }
 
 @layer base {
-  body { font-family: var(--font-sans); -webkit-tap-highlight-color: transparent; }
-  h1, h2, h3, h4 { font-family: var(--font-display); letter-spacing: -0.02em; }
+  body {
+    font-family: var(--font-sans);
+    -webkit-tap-highlight-color: transparent;
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+  }
 }
-@utility bg-hero { background: var(--gradient-hero); }
-@utility bg-brand { background: var(--gradient-primary); }
-@utility shadow-card { box-shadow: var(--shadow-card); }
-@utility shadow-glow { box-shadow: var(--shadow-glow); }
-@utility pb-safe { padding-bottom: max(env(safe-area-inset-bottom), 0.5rem); }
-@keyframes float-up { from { opacity: 0; transform: translateY(16px) scale(.96);} to { opacity: 1; transform: none; } }
-@keyframes bar-fill { from { width: 0; } }
-@utility animate-float-up { animation: float-up .7s cubic-bezier(.2,.8,.2,1) both; }
-@utility animate-bar { animation: bar-fill 1.2s ease-out both; }
+@utility bg-hero {
+  background: var(--gradient-hero);
+}
+@utility bg-brand {
+  background: var(--gradient-primary);
+}
+@utility shadow-card {
+  box-shadow: var(--shadow-card);
+}
+@utility shadow-glow {
+  box-shadow: var(--shadow-glow);
+}
+@utility pb-safe {
+  padding-bottom: max(env(safe-area-inset-bottom), 0.5rem);
+}
+@keyframes float-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes bar-fill {
+  from {
+    width: 0;
+  }
+}
+@utility animate-float-up {
+  animation: float-up 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@utility animate-bar {
+  animation: bar-fill 1.2s ease-out both;
+}
