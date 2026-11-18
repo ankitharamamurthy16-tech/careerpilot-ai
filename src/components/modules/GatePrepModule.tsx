@@ -65,7 +65,7 @@ export function GatePrepModule() {
     toast.success(`Switched GATE Paper to ${code}`);
   };
 
-  const activePaperData = gatePapers.find((p) => p.code === selectedPaper) || gatePapers[0];
+  const activePaperData = gatePapers.find((p) => p.code === selectedPaper) ?? gatePapers[0]!;
 
   // Filter questions
   const filteredQuestions = gateQuestionBank.filter((q) => {
@@ -109,7 +109,7 @@ export function GatePrepModule() {
     if (q.type === "MCQ") {
       return userMcqAnswers[q.id] === q.correctOption;
     } else {
-      const typed = parseFloat(userNatAnswers[q.id]);
+      const typed = parseFloat(userNatAnswers[q.id] ?? "");
       if (isNaN(typed)) return false;
       if (q.numericalRange) {
         return typed >= q.numericalRange[0] && typed <= q.numericalRange[1];
@@ -129,10 +129,10 @@ export function GatePrepModule() {
 
     for (const q of filteredQuestions) {
       maxMarks += q.marks;
-      if (!topicAccuracies[q.topic]) {
-        topicAccuracies[q.topic] = { correct: 0, total: 0, subject: q.subjectName };
-      }
-      topicAccuracies[q.topic].total += 1;
+      const topicEntry =
+        topicAccuracies[q.topic] ??
+        (topicAccuracies[q.topic] = { correct: 0, total: 0, subject: q.subjectName });
+      topicEntry.total += 1;
 
       const answered =
         q.type === "MCQ" ? userMcqAnswers[q.id] !== undefined : !!userNatAnswers[q.id]?.trim();
@@ -142,7 +142,7 @@ export function GatePrepModule() {
       } else if (isQuestionCorrect(q)) {
         correct++;
         earnedMarks += q.marks;
-        topicAccuracies[q.topic].correct += 1;
+        topicEntry.correct += 1;
       } else {
         incorrect++;
         if (q.type === "MCQ") {
@@ -156,6 +156,11 @@ export function GatePrepModule() {
     const accuracy =
       correct + incorrect > 0 ? Math.round((correct / (correct + incorrect)) * 100) : 0;
 
+    const resolvedSubjectName =
+      subjectFilter !== "all"
+        ? gateCSESubjects.find((s) => s.id === subjectFilter)?.name
+        : "All Subjects";
+
     const result: GateQuizResult = {
       id: "gate-res-" + Date.now(),
       paperCode: selectedPaper,
@@ -166,11 +171,8 @@ export function GatePrepModule() {
         hour: "2-digit",
         minute: "2-digit",
       }),
-      subjectId: subjectFilter !== "all" ? subjectFilter : undefined,
-      subjectName:
-        subjectFilter !== "all"
-          ? gateCSESubjects.find((s) => s.id === subjectFilter)?.name
-          : "All Subjects",
+      ...(subjectFilter !== "all" ? { subjectId: subjectFilter } : {}),
+      ...(resolvedSubjectName !== undefined ? { subjectName: resolvedSubjectName } : {}),
       score: earnedMarks,
       maxScore: maxMarks,
       percentage,
@@ -783,7 +785,7 @@ export function GatePrepModule() {
 
           {/* Active Plan Milestones */}
           {(() => {
-            const plan = gateStudyPlans.find((p) => p.id === activePlanId) || gateStudyPlans[0];
+            const plan = gateStudyPlans.find((p) => p.id === activePlanId) ?? gateStudyPlans[0]!;
             return (
               <div className="rounded-2xl border border-border bg-card p-5 shadow-card">
                 <div className="flex items-center justify-between border-b border-border pb-3">

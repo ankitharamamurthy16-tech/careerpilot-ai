@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { ChevronRight, Briefcase, Landmark, Sparkles, Filter, GraduationCap } from "lucide-react";
-import { modules, getPathway, type Module } from "@/lib/data";
+import { modules, getPathway, calculatePlacementReadiness, type Module } from "@/lib/data";
 import { Progress } from "@/components/Brand";
 import { NotificationBell } from "@/components/NotificationCentre";
 
@@ -29,6 +29,7 @@ type FilterTab = "all" | "placement" | "government" | "gate" | "core";
 function Modules() {
   const [filter, setFilter] = useState<FilterTab>("all");
   const defaultPathway = getPathway();
+  const placementReadinessScore = calculatePlacementReadiness().overallScore;
 
   const filtered = modules.filter((m) => {
     if (filter === "all") return true;
@@ -148,9 +149,14 @@ function Modules() {
             <div className="mt-4 border-t border-border/50 pt-3">
               <div className="flex justify-between text-xs font-semibold">
                 <span className="text-muted-foreground">Readiness Progress</span>
-                <span className="text-primary font-bold">{m.progress}%</span>
+                <span className="text-primary font-bold">
+                  {m.id === "placement-tracker" ? placementReadinessScore : m.progress}%
+                </span>
               </div>
-              <Progress value={m.progress} className="mt-1.5 h-1.5" />
+              <Progress
+                value={m.id === "placement-tracker" ? placementReadinessScore : m.progress}
+                className="mt-1.5 h-1.5"
+              />
             </div>
           </Link>
         ))}

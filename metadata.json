@@ -1,6 +1,6 @@
 {
   "name": "CareerPilot AI",
   "description": "AI-powered placement preparation for college students.",
-  "requestFramePermissions": [],
+  "requestFramePermissions": ["microphone"],
   "capabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

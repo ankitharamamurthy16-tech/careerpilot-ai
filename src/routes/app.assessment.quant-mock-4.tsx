@@ -47,8 +47,11 @@ function QuantTest() {
   answersRef.current = answers;
   const leftRef = useRef(left);
   leftRef.current = left;
+  const submittedRef = useRef(false);
 
   function submit() {
+    if (submittedRef.current) return;
+    submittedRef.current = true;
     const a = answersRef.current;
     const s = scoreAssessment(T.questions, a);
     const r: AssessmentResult = {
@@ -76,6 +79,7 @@ function QuantTest() {
   }, [left, stage]);
 
   function restart() {
+    submittedRef.current = false;
     setAnswers(Array(N).fill(null));
     setIdx(0);
     setLeft(T.durationSec);
@@ -196,6 +200,7 @@ function QuantTest() {
   }
 
   const q = T.questions[idx];
+  if (!q) return null;
   return (
     <div>
       {header}
@@ -252,7 +257,7 @@ function QuantTest() {
               onClick={() => setIdx(idx + 1)}
               className="bg-brand flex h-12 items-center justify-center gap-1 rounded-xl font-semibold text-primary-foreground"
             >
-              Next
+              Next Question
               <ChevronRight className="h-4 w-4" />
             </button>
           ) : (
@@ -445,7 +450,7 @@ function ResultView({ r, onRetake }: { r: AssessmentResult; onRetake: () => void
                 </p>
               </div>
               <p className="mt-2">
-                Your answer: <b>{a === null ? "Not answered" : q.options[a]}</b>
+                Your answer: <b>{a === null || a === undefined ? "Not answered" : q.options[a]}</b>
               </p>
               {!ok && (
                 <p>

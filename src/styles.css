@@ -213,3 +213,19 @@
 @utility animate-bar {
   animation: bar-fill 1.2s ease-out both;
 }
+
+@media print {
+  body {
+    background: #ffffff !important;
+  }
+  aside,
+  nav,
+  header {
+    display: none !important;
+  }
+  #resume-preview-sheet {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+  }
+}

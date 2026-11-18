@@ -1,6 +1,6 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { ArrowLeft, PlayCircle, Sparkles, Award } from "lucide-react";
-import { modules } from "@/lib/data";
+import { modules, calculatePlacementReadiness } from "@/lib/data";
 import { Progress } from "@/components/Brand";
 import { GovernmentExamModule } from "@/components/modules/GovernmentExamModule";
 import { CodeDecoderModule } from "@/components/modules/CodeDecoderModule";
@@ -9,6 +9,8 @@ import { ResumeBuilderModule } from "@/components/modules/ResumeBuilderModule";
 import { RoadmapModule } from "@/components/modules/RoadmapModule";
 import { CommunicationModule } from "@/components/modules/CommunicationModule";
 import { GatePrepModule } from "@/components/modules/GatePrepModule";
+import { AssessmentModule } from "@/components/modules/AssessmentModule";
+import { PlacementTrackerModule } from "@/components/modules/PlacementTrackerModule";
 
 export const Route = createFileRoute("/app/modules/$id")({
   loader: ({ params }) => {
@@ -33,6 +35,8 @@ export const Route = createFileRoute("/app/modules/$id")({
 function ModulePage() {
   const { id } = Route.useLoaderData();
   const m = modules.find((x) => x.id === id)!;
+  const headerProgress =
+    id === "placement-tracker" ? calculatePlacementReadiness().overallScore : m.progress;
 
   return (
     <div>
@@ -58,13 +62,14 @@ function ModulePage() {
           </div>
         </div>
         <div className="mt-5 flex items-center gap-3 text-sm">
-          <Progress value={m.progress} className="bg-navy-foreground/15" />
-          <b>{m.progress}%</b>
+          <Progress value={headerProgress} className="bg-navy-foreground/15" />
+          <b>{headerProgress}%</b>
         </div>
       </header>
 
       <div className="px-5 py-6 md:px-6">
         {/* Render Specialized Interactive Module Experience */}
+        {id === "placement-tracker" && <PlacementTrackerModule />}
         {id === "gate-prep" && <GatePrepModule />}
         {id === "government-exams" && <GovernmentExamModule />}
         {id === "code-decoder" && <CodeDecoderModule />}
@@ -73,71 +78,12 @@ function ModulePage() {
         {id === "resume" && <ResumeBuilderModule />}
         {id === "roadmap" && <RoadmapModule />}
 
-        {/* Assessment Module Fallback & Sub-Tests */}
-        {id === "assessment" && (
-          <div className="space-y-4">
-            <div className="rounded-2xl border border-border bg-card p-5 shadow-card">
-              <h3 className="font-display font-bold text-base">Aptitude & Technical Assessments</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Practice full-length timed tests matching top company patterns (TCS, Infosys,
-                Cognizant)
-              </p>
-
-              <div className="mt-4 space-y-2.5">
-                <Link
-                  to="/app/assessment/quant-mock-4"
-                  className="flex w-full items-center gap-3 rounded-2xl bg-primary/10 border border-primary/30 p-4 text-left shadow-card transition active:scale-[0.98] hover:bg-primary/15"
-                >
-                  <PlayCircle className="h-6 w-6 shrink-0 text-primary" />
-                  <div className="flex-1">
-                    <span className="block text-sm font-bold text-foreground">
-                      Quantitative Aptitude – Mock 4 (30 Questions)
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      Timed 30 mins • Percentages, Profit & Loss, Time-Speed-Distance
-                    </span>
-                  </div>
-                  <span className="rounded-xl bg-primary px-3 py-1.5 text-xs font-bold text-white shadow-glow">
-                    Start Test
-                  </span>
-                </Link>
-
-                <div className="flex w-full items-center gap-3 rounded-2xl bg-card border border-border p-4 text-left opacity-80 shadow-card">
-                  <PlayCircle className="h-6 w-6 shrink-0 text-muted-foreground" />
-                  <div className="flex-1">
-                    <span className="block text-sm font-semibold text-foreground">
-                      Logical Reasoning – Puzzles & Seating Arrangements
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      Blood relations, syllogisms and circular puzzles
-                    </span>
-                  </div>
-                  <span className="rounded-lg bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground">
-                    Available Soon
-                  </span>
-                </div>
-
-                <div className="flex w-full items-center gap-3 rounded-2xl bg-card border border-border p-4 text-left opacity-80 shadow-card">
-                  <PlayCircle className="h-6 w-6 shrink-0 text-muted-foreground" />
-                  <div className="flex-1">
-                    <span className="block text-sm font-semibold text-foreground">
-                      Core CS Quiz: DBMS, OS & Computer Networks
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      SQL joins, indexing, processes, threads and TCP/IP
-                    </span>
-                  </div>
-                  <span className="rounded-lg bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground">
-                    Available Soon
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Interactive Assessment & Placement Prep Hub */}
+        {id === "assessment" && <AssessmentModule />}
 
         {/* Other modules (Projects, Community) */}
-        {id !== "gate-prep" &&
+        {id !== "placement-tracker" &&
+          id !== "gate-prep" &&
           id !== "government-exams" &&
           id !== "code-decoder" &&
           id !== "interview-mentor" &&

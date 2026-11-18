@@ -30,6 +30,9 @@ import {
   getInterviewSessions,
   getGovResults,
   getGateResults,
+  calculatePlacementReadiness,
+  evaluatePlacementMilestones,
+  loadPlacementTracker,
   type PreparationPathway,
   type PathwayType,
 } from "@/lib/data";
@@ -63,6 +66,11 @@ function ProgressPage() {
     "gate",
   ]);
   const [metrics, setMetrics] = useState(getIntegratedMetrics());
+  const [placementReadiness, setPlacementReadiness] = useState(() => calculatePlacementReadiness());
+  const [placementMilestones, setPlacementMilestones] = useState(() =>
+    evaluatePlacementMilestones(),
+  );
+  const [placementTracker, setPlacementTracker] = useState(() => loadPlacementTracker());
 
   const interviewHistory = getInterviewSessions();
   const govResults = getGovResults();
@@ -72,6 +80,9 @@ function ProgressPage() {
   useEffect(() => {
     setSelectedPathwaysState(getSelectedPathways());
     setMetrics(getIntegratedMetrics());
+    setPlacementReadiness(calculatePlacementReadiness());
+    setPlacementMilestones(evaluatePlacementMilestones());
+    setPlacementTracker(loadPlacementTracker());
   }, []);
 
   const handleTogglePathway = (p: PathwayType) => {
@@ -103,9 +114,12 @@ function ProgressPage() {
     },
     {
       label: "Interview Avg",
-      value: `${metrics.interviewAvg}%`,
+      value:
+        metrics.interviewProgress.totalInterviews > 0
+          ? `${metrics.interviewProgress.averageScoreTen}/10`
+          : "0/10",
       icon: Mic,
-      desc: `${interviewHistory.length} Simulated Rounds`,
+      desc: `${interviewHistory.length} Mock Interviews`,
     },
     {
       label: "Govt Mock Avg",
@@ -194,6 +208,59 @@ function ProgressPage() {
         ))}
       </div>
 
+      {/* SMART PLACEMENT READINESS SUMMARY CARD */}
+      <section className="rounded-2xl border border-primary/30 bg-card p-5 shadow-card">
+        <div className="flex flex-col gap-3 border-b border-border pb-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-full bg-primary/15 px-2.5 py-0.5 text-[10px] font-bold uppercase text-primary">
+                Placement Readiness: {placementReadiness.overallScore}/100
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {8 - placementReadiness.incompleteCount}/8 active pillars ·{" "}
+                {placementTracker.completedCount}/{placementTracker.totalActivities} prep tasks ·{" "}
+                {placementMilestones.filter((m) => m.unlocked).length}/{placementMilestones.length}{" "}
+                Milestones Unlocked
+              </span>
+            </div>
+            <h2 className="font-display mt-1 text-base font-bold">
+              Smart Placement Tracker Breakdown
+            </h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {placementReadiness.calculationExplanation}
+            </p>
+          </div>
+          <Link
+            to="/app/modules/$id"
+            params={{ id: "placement-tracker" }}
+            className="bg-brand shadow-glow inline-flex shrink-0 items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold text-white"
+          >
+            <span>Open Placement Dashboard</span>
+            <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
+
+        <div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+          {placementReadiness.categories.map((cat) => (
+            <div
+              key={cat.key}
+              className="rounded-xl border border-border/70 bg-muted/20 p-3 text-xs"
+            >
+              <div className="flex items-center justify-between gap-1">
+                <span className="font-bold text-foreground truncate">{cat.label}</span>
+                <span className="text-[10px] font-semibold text-primary">
+                  {cat.status === "Incomplete" ? "Incomplete" : `${cat.earned}/${cat.weight}`}
+                </span>
+              </div>
+              <Progress
+                value={cat.weight > 0 ? Math.round((cat.earned / cat.weight) * 100) : 0}
+                className="mt-2 h-1.5"
+              />
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* WEEKLY AI INTERVIEW MENTOR PROGRESSION (WEEKS COMPARISON) */}
       <section className="rounded-2xl border border-border bg-card p-5 shadow-card">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-border pb-3">
@@ -227,50 +294,65 @@ function ProgressPage() {
           </p>
         ) : (
           <div className="mt-4 space-y-3">
-            {/* Week Comparison Bars */}
+            {/* Session Comparison Cards */}
             <div className="grid gap-3 sm:grid-cols-2">
-              {interviewHistory.map((sess) => (
-                <div
-                  key={sess.id}
-                  className="rounded-xl border border-border/80 bg-muted/20 p-4 text-xs shadow-sm"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="rounded-full bg-violet/20 px-2.5 py-0.5 text-[10px] font-bold text-violet">
-                      Week {sess.weekNumber} Simulated Interview
-                    </span>
-                    <span className="font-display text-sm font-bold text-primary">
-                      {sess.evaluation.score} / 100
-                    </span>
-                  </div>
-
-                  <p className="mt-2 font-medium text-foreground truncate">Role: {sess.role}</p>
-
-                  <div className="mt-3 grid grid-cols-3 gap-1.5 text-center text-[10px]">
-                    <div className="rounded bg-card p-1.5 border border-border">
-                      <span className="text-muted-foreground block">Cadence</span>
-                      <span className="font-bold text-foreground">
-                        {sess.evaluation.speakingPaceWpm} WPM
+              {interviewHistory.map((sess) => {
+                const scoreTen =
+                  sess.overallScoreTen ?? Math.round(sess.evaluation?.score ?? 0) / 10;
+                return (
+                  <div
+                    key={sess.id}
+                    className="rounded-xl border border-border/80 bg-muted/20 p-4 text-xs shadow-sm"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className="rounded-full bg-violet/20 px-2.5 py-0.5 text-[10px] font-bold text-violet">
+                          {sess.category ?? sess.role}
+                        </span>
+                        <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
+                          {sess.completionStatus ?? "Completed"}
+                        </span>
+                      </div>
+                      <span className="font-display text-sm font-bold text-primary">
+                        {scoreTen} / 10
                       </span>
                     </div>
-                    <div className="rounded bg-card p-1.5 border border-border">
-                      <span className="text-muted-foreground block">STAR Structure</span>
-                      <span className="font-bold text-foreground">
-                        {sess.evaluation.structureScore}%
-                      </span>
-                    </div>
-                    <div className="rounded bg-card p-1.5 border border-border">
-                      <span className="text-muted-foreground block">Fillers</span>
-                      <span className="font-bold text-foreground">
-                        {sess.evaluation.fillerWordCount} detected
-                      </span>
-                    </div>
-                  </div>
 
-                  <div className="mt-3 border-t border-border/60 pt-2 text-[11px] text-muted-foreground">
-                    <b>Assigned Drill:</b> {sess.evaluation.recommendedDrill}
+                    <p className="mt-2 font-medium text-foreground truncate">
+                      {sess.date} • {sess.questionsAnsweredCorrectly ?? 0}/
+                      {sess.totalQuestionsAnswered ?? sess.turns?.length ?? 1} correct
+                    </p>
+
+                    <div className="mt-3 grid grid-cols-3 gap-1.5 text-center text-[10px]">
+                      <div className="rounded bg-card p-1.5 border border-border">
+                        <span className="text-muted-foreground block">Cadence</span>
+                        <span className="font-bold text-foreground">
+                          {sess.evaluation?.speakingPaceWpm ?? 0} WPM
+                        </span>
+                      </div>
+                      <div className="rounded bg-card p-1.5 border border-border">
+                        <span className="text-muted-foreground block">Structure</span>
+                        <span className="font-bold text-foreground">
+                          {sess.dimensionAverages?.answerStructure ??
+                            Math.round((sess.evaluation?.structureScore ?? 0) / 10)}
+                          /10
+                        </span>
+                      </div>
+                      <div className="rounded bg-card p-1.5 border border-border">
+                        <span className="text-muted-foreground block">Fillers</span>
+                        <span className="font-bold text-foreground">
+                          {sess.evaluation?.fillerWordCount ?? 0} detected
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 border-t border-border/60 pt-2 text-[11px] text-muted-foreground">
+                      <b>Assigned Drill:</b>{" "}
+                      {sess.evaluation?.recommendedDrill ?? "Continue structured mock practice"}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
@@ -341,32 +423,45 @@ function ProgressPage() {
 
       {/* RECENT TEST ATTEMPTS (QUANTITATIVE, GOVT & GATE EXAMS) */}
       <div className="grid gap-5 md:grid-cols-3">
-        {/* Quantitative Aptitude Mock Attempts */}
+        {/* Placement Assessments & Aptitude Attempts */}
         <section className="rounded-2xl border border-border bg-card p-5 shadow-card">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="font-bold text-sm">Quantitative Aptitude Attempts</h3>
-            <Link to="/app/assessment/quant-mock-4" className="text-xs font-bold text-primary">
-              Take Mock 4 →
+            <div>
+              <h3 className="font-bold text-sm">Placement Assessment Attempts</h3>
+              <p className="text-[11px] text-muted-foreground">
+                Accuracy: {metrics.assessmentStats.overallAccuracy}% •{" "}
+                {metrics.assessmentStats.totalQuestionsAttempted} Qs attempted
+              </p>
+            </div>
+            <Link
+              to="/app/modules/$id"
+              params={{ id: "assessment" }}
+              className="text-xs font-bold text-primary"
+            >
+              Open Hub →
             </Link>
           </div>
 
-          {quantResults.length === 0 ? (
+          {metrics.assessmentStats.history.length === 0 && quantResults.length === 0 ? (
             <p className="text-xs text-muted-foreground py-3">
-              No full quantitative mocks attempted yet. Launch Mock 4 to record your score!
+              No placement assessments completed yet. Open Aptitude, Logical, Technical, Core CS, or
+              Mock 4 to record your score!
             </p>
           ) : (
             <div className="space-y-2">
-              {quantResults.map((r, i) => (
+              {metrics.assessmentStats.history.slice(0, 5).map((r) => (
                 <div
-                  key={i}
+                  key={r.id}
                   className="flex items-center justify-between rounded-xl bg-muted/40 p-3 text-xs"
                 >
-                  <div>
-                    <p className="font-bold text-foreground">{r.title}</p>
-                    <p className="text-[10px] text-muted-foreground">{r.takenAt}</p>
+                  <div className="min-w-0 pr-2">
+                    <p className="font-bold text-foreground truncate">{r.title}</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {new Date(r.takenAt).toLocaleDateString()} • {r.score}✓ / {r.incorrect}✗
+                    </p>
                   </div>
-                  <span className="font-display font-bold text-primary text-sm">
-                    {r.score} / {r.total} ({Math.round((r.score / r.total) * 100)}%)
+                  <span className="font-display font-bold text-primary text-sm shrink-0">
+                    {r.score} / {r.total} ({r.accuracyPct}%)
                   </span>
                 </div>
               ))}

@@ -25,7 +25,10 @@ export function getStudent(): Student | null {
   if (typeof window === "undefined") return null;
   try {
     const v = localStorage.getItem(KEY);
-    return v ? JSON.parse(v) : null;
+    if (!v) return null;
+    const parsed = JSON.parse(v);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+    return parsed as Student;
   } catch {
     return null;
   }

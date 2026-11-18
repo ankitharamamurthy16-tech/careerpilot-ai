@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useEffect } from "react";
 import {
   MessageCircle,
   Mic,
@@ -11,137 +11,96 @@ import {
   BookOpen,
   Mail,
   Users,
+  RotateCcw,
 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
+import { useSpeechRecorder } from "@/hooks/use-speech-recorder";
+import { saveCommunicationAttempt } from "@/lib/data";
 
 type SpeechFeedback = {
-  wpm: number;
+  wpm: number | null;
   paceVerdict: string;
   wordCount: number;
   fillerCount: number;
   hasStructure: boolean;
+  isSpoken: boolean;
+  durationSec: number;
 };
-
-interface ISpeechRecognition {
-  continuous: boolean;
-  interimResults: boolean;
-  lang: string;
-  start: () => void;
-  stop: () => void;
-  onstart: (() => void) | null;
-  onresult:
-    | ((event: {
-        results: { [index: number]: { [index: number]: { transcript: string } }; length: number };
-      }) => void)
-    | null;
-  onerror: ((event: { error: string }) => void) | null;
-  onend: (() => void) | null;
-}
 
 export function CommunicationModule() {
   const [selectedDrill, setSelectedDrill] = useState<"self-intro" | "gd-ai" | "email-drill">(
     "self-intro",
   );
 
-  // Voice recording state for communication practice
-  const [isRecording, setIsRecording] = useState(false);
+  // Voice recording & editable transcript state for communication practice
   const [spokenText, setSpokenText] = useState("");
-  const [elapsedSec, setElapsedSec] = useState(0);
   const [feedback, setFeedback] = useState<SpeechFeedback | null>(null);
 
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const recognitionRef = useRef<ISpeechRecognition | null>(null);
+  const {
+    status,
+    isRecording,
+    isRequestingPermission,
+    isProcessing,
+    elapsedSec,
+    durationMs,
+    error: speechError,
+    hasRecordedSpeech,
+    startRecording,
+    stopRecording,
+    resetRecording,
+    clearError,
+  } = useSpeechRecorder({
+    onTranscriptChange: (transcript) => {
+      setSpokenText(transcript);
+    },
+    onRecordingStart: () => {
+      setFeedback(null);
+      toast.info("Microphone active — speak your response clearly.");
+    },
+    onRecordingComplete: () => {
+      toast.success("Recording complete. Review or edit your transcript before analyzing.");
+    },
+    onEmptyRecording: () => {
+      toast.warning("No speech detected. Please speak clearly or type your response.");
+    },
+    onError: (msg) => {
+      toast.error(msg);
+    },
+  });
+
+  // Stop active recording if user switches away from the voice drill
+  useEffect(() => {
+    if (selectedDrill !== "self-intro" && (isRecording || isRequestingPermission)) {
+      stopRecording();
+    }
+  }, [selectedDrill, isRecording, isRequestingPermission, stopRecording]);
 
   const toggleRecording = () => {
-    if (isRecording) {
+    if (isRecording || isRequestingPermission) {
       stopRecording();
     } else {
-      startRecording();
+      void startRecording(spokenText);
     }
   };
 
-  const startRecording = () => {
+  const handleReset = () => {
+    resetRecording();
     setSpokenText("");
-    setElapsedSec(0);
     setFeedback(null);
-
-    const win = window as unknown as {
-      SpeechRecognition?: { new (): ISpeechRecognition };
-      webkitSpeechRecognition?: { new (): ISpeechRecognition };
-    };
-    const SpeechRecognitionClass = win.SpeechRecognition || win.webkitSpeechRecognition;
-
-    if (!SpeechRecognitionClass) {
-      toast.error(
-        "Speech Recognition not supported in this browser. Please type your speech response.",
-      );
-      return;
-    }
-
-    try {
-      const recognition = new SpeechRecognitionClass();
-      recognition.continuous = true;
-      recognition.interimResults = true;
-      recognition.lang = "en-US";
-
-      recognition.onstart = () => {
-        setIsRecording(true);
-        toast.info("Listening... speak your response clearly.");
-      };
-
-      recognition.onresult = (event) => {
-        let transcript = "";
-        for (let i = 0; i < event.results.length; i++) {
-          const item = event.results[i]?.[0];
-          if (item) transcript += item.transcript + " ";
-        }
-        setSpokenText(transcript.trim());
-      };
-
-      recognition.onerror = (e) => {
-        toast.error("Speech recognition stopped: " + e.error);
-        stopRecording();
-      };
-
-      recognition.onend = () => {
-        setIsRecording(false);
-      };
-
-      recognition.start();
-      recognitionRef.current = recognition;
-
-      timerRef.current = setInterval(() => {
-        setElapsedSec((p) => p + 1);
-      }, 1000);
-    } catch {
-      setIsRecording(false);
-    }
-  };
-
-  const stopRecording = () => {
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.stop();
-      } catch {
-        // ignore
-      }
-    }
-    if (timerRef.current) clearInterval(timerRef.current);
-    setIsRecording(false);
   };
 
   const handleAnalyzeSpeech = () => {
-    if (!spokenText.trim()) {
-      toast.error("Please speak or write your answer first.");
+    const trimmed = spokenText.trim();
+    if (!trimmed) {
+      toast.error("Please record speech or type your answer first.");
       return;
     }
 
-    const words = spokenText.trim().split(/\s+/).filter(Boolean);
-    const duration = elapsedSec > 0 ? elapsedSec : 40;
-    const wpm = Math.round(words.length / (duration / 60));
+    const words = trimmed.split(/\s+/).filter(Boolean);
+    const wordCount = words.length;
 
-    const lower = spokenText.toLowerCase();
+    const lower = trimmed.toLowerCase();
     const fillers = ["um", "uh", "like", "basically", "actually", "you know"];
     let fillerCount = 0;
     fillers.forEach((f) => {
@@ -149,19 +108,42 @@ export function CommunicationModule() {
       if (matches) fillerCount += matches.length;
     });
 
-    let paceVerdict = "Optimal (120-150 WPM)";
-    if (wpm < 110) paceVerdict = "A Bit Slow (<110 WPM)";
-    else if (wpm > 165) paceVerdict = "A Bit Fast (>165 WPM)";
+    const isSpoken = hasRecordedSpeech && durationMs > 0;
+    let wpm: number | null = null;
+    let paceVerdict = "Typed Response";
+    let actualDurationSec = 0;
 
+    if (isSpoken) {
+      actualDurationSec = Math.max(durationMs / 1000, 1);
+      wpm = Math.round(wordCount / (actualDurationSec / 60));
+      paceVerdict = "Optimal (120-150 WPM)";
+      if (wpm < 110) paceVerdict = "A Bit Slow (<110 WPM)";
+      else if (wpm > 165) paceVerdict = "A Bit Fast (>165 WPM)";
+    }
+
+    const roundedDurationSec = Math.round(actualDurationSec);
     setFeedback({
       wpm,
       paceVerdict,
-      wordCount: words.length,
+      wordCount,
       fillerCount,
-      hasStructure: words.length >= 40,
+      hasStructure: wordCount >= 40,
+      isSpoken,
+      durationSec: roundedDurationSec,
+    });
+    saveCommunicationAttempt({
+      drill: selectedDrill,
+      wordCount,
+      fillerCount,
+      wpm,
+      isSpoken,
+      hasStructure: wordCount >= 40,
+      durationSec: roundedDurationSec,
     });
     toast.success("Speech analysis complete!");
   };
+
+  const wordCount = spokenText.trim() ? spokenText.trim().split(/\s+/).filter(Boolean).length : 0;
 
   return (
     <div className="space-y-6">
@@ -200,6 +182,7 @@ export function CommunicationModule() {
       {/* Drill Selector Tabs */}
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
         <button
+          type="button"
           onClick={() => {
             setSelectedDrill("self-intro");
             setFeedback(null);
@@ -220,6 +203,7 @@ export function CommunicationModule() {
         </button>
 
         <button
+          type="button"
           onClick={() => {
             setSelectedDrill("gd-ai");
             setFeedback(null);
@@ -240,6 +224,7 @@ export function CommunicationModule() {
         </button>
 
         <button
+          type="button"
           onClick={() => {
             setSelectedDrill("email-drill");
             setFeedback(null);
@@ -280,43 +265,123 @@ export function CommunicationModule() {
             {/* Voice Recording Box */}
             <div className="rounded-xl border border-border bg-muted/20 p-4">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/70 pb-3">
-                <button
-                  onClick={toggleRecording}
-                  className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold text-white transition active:scale-95 ${
-                    isRecording
-                      ? "bg-red-600 animate-pulse shadow-glow"
-                      : "bg-brand hover:opacity-95"
-                  }`}
-                >
-                  {isRecording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-                  <span>{isRecording ? "Stop Speaking" : "Record Speech (Mic)"}</span>
-                </button>
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={toggleRecording}
+                    disabled={isRequestingPermission || isProcessing}
+                    className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold text-white transition active:scale-95 disabled:opacity-60 ${
+                      isRecording
+                        ? "bg-red-600 animate-pulse shadow-glow"
+                        : "bg-brand hover:opacity-95"
+                    }`}
+                  >
+                    {isRecording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                    <span>
+                      {isRequestingPermission
+                        ? "Requesting Mic..."
+                        : isProcessing
+                          ? "Finalizing..."
+                          : isRecording
+                            ? "Stop Recording"
+                            : "Start Recording"}
+                    </span>
+                  </button>
+
+                  {isRecording && (
+                    <span
+                      data-testid="comm-recording-status"
+                      className="flex items-center gap-1.5 text-xs font-bold text-red-500"
+                    >
+                      <span className="h-2 w-2 rounded-full bg-red-500 animate-ping" />
+                      <span>Recording... {elapsedSec}s</span>
+                    </span>
+                  )}
+
+                  {isRequestingPermission && (
+                    <span
+                      data-testid="comm-recording-status"
+                      className="text-xs font-semibold text-amber-600 dark:text-amber-400"
+                    >
+                      Waiting for microphone permission...
+                    </span>
+                  )}
+
+                  {isProcessing && (
+                    <span
+                      data-testid="comm-recording-status"
+                      className="text-xs font-semibold text-primary"
+                    >
+                      Finalizing transcription...
+                    </span>
+                  )}
+
+                  {status === "stopped" && spokenText.trim() && (
+                    <span
+                      data-testid="comm-recording-status"
+                      className="flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400"
+                    >
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      <span>Transcription ready — edit below before analyzing</span>
+                    </span>
+                  )}
+                </div>
 
                 <div className="flex items-center gap-4 text-xs font-mono text-muted-foreground">
                   <span>
-                    Words:{" "}
-                    <b className="text-foreground">
-                      {spokenText.split(/\s+/).filter(Boolean).length}
-                    </b>
+                    Words: <b className="text-foreground">{wordCount}</b>
                   </span>
                   <span>
                     Duration: <b className="text-primary">{elapsedSec}s</b>
                   </span>
+                  {(spokenText || elapsedSec > 0 || speechError) && (
+                    <button
+                      type="button"
+                      onClick={handleReset}
+                      title="Reset recording and text"
+                      aria-label="Reset recording and text"
+                      className="text-muted-foreground hover:text-foreground"
+                    >
+                      <RotateCcw className="h-3.5 w-3.5" />
+                    </button>
+                  )}
                 </div>
               </div>
 
+              {speechError && (
+                <div
+                  role="alert"
+                  className="mt-3 flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-800 dark:text-amber-300"
+                >
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span>{speechError}</span>
+                </div>
+              )}
+
               <textarea
                 rows={4}
+                aria-label="Speech transcription and response"
                 value={spokenText}
-                onChange={(e) => setSpokenText(e.target.value)}
-                placeholder="Click 'Record Speech' to speak, or type your self-introduction here..."
-                className="mt-3 w-full rounded-xl border border-input bg-card p-3 text-xs leading-relaxed text-foreground"
+                onChange={(e) => {
+                  const next = e.target.value;
+                  setSpokenText(next);
+                  setFeedback(null);
+                  if (speechError) clearError();
+                  if (!next.trim() && !isRecording) {
+                    resetRecording();
+                  }
+                }}
+                placeholder="Click 'Start Recording' to speak, or type your self-introduction here..."
+                className="mt-3 w-full rounded-xl border border-input bg-card p-3 text-xs leading-relaxed text-foreground outline-none transition focus:border-primary focus:ring-1 focus:ring-primary"
               />
 
               <div className="mt-3 flex justify-end">
                 <button
+                  type="button"
                   onClick={handleAnalyzeSpeech}
-                  disabled={isRecording || !spokenText.trim()}
+                  disabled={
+                    isRecording || isRequestingPermission || isProcessing || !spokenText.trim()
+                  }
                   className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-xl px-5 py-2 text-xs font-bold transition active:scale-95 disabled:opacity-50"
                 >
                   Analyze Cadence & Fillers
@@ -330,7 +395,9 @@ export function CommunicationModule() {
                 <div className="mt-2 grid grid-cols-3 gap-2 text-center">
                   <div className="rounded-lg bg-card p-2 border border-border">
                     <p className="text-[10px] text-muted-foreground uppercase font-bold">Pace</p>
-                    <p className="font-bold text-foreground">{feedback.wpm} WPM</p>
+                    <p className="font-bold text-foreground">
+                      {feedback.wpm !== null ? `${feedback.wpm} WPM` : "Typed"}
+                    </p>
                     <p className="text-[10px] text-primary">{feedback.paceVerdict}</p>
                   </div>
                   <div className="rounded-lg bg-card p-2 border border-border">

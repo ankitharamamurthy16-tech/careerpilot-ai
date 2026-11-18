@@ -20,6 +20,7 @@ import {
   Calculator,
   type LucideIcon,
 } from "lucide-react";
+import type { CodeLanguage } from "./code-decoder-data";
 
 // ==========================================
 // 1. PATHWAY MANAGEMENT
@@ -58,7 +59,7 @@ export function setSelectedPathways(pathways: PathwayType[]) {
     const cleaned = pathways.length ? pathways : ["placement", "government", "gate"];
     localStorage.setItem(PATHWAYS_MULTI_KEY, JSON.stringify(cleaned));
     if (cleaned.length === 3) localStorage.setItem(PATHWAY_KEY, "all");
-    else if (cleaned.length === 1) localStorage.setItem(PATHWAY_KEY, cleaned[0]);
+    else if (cleaned.length === 1) localStorage.setItem(PATHWAY_KEY, cleaned[0] ?? "placement");
     else if (
       cleaned.includes("placement") &&
       cleaned.includes("government") &&
@@ -66,7 +67,7 @@ export function setSelectedPathways(pathways: PathwayType[]) {
     ) {
       localStorage.setItem(PATHWAY_KEY, "both");
     } else {
-      localStorage.setItem(PATHWAY_KEY, cleaned[0]);
+      localStorage.setItem(PATHWAY_KEY, cleaned[0] ?? "placement");
     }
   } catch {
     // ignore
@@ -102,7 +103,7 @@ export function getPathway(): PreparationPathway {
     }
     const multi = getSelectedPathways();
     if (multi.length === 3) return "all";
-    if (multi.length === 1) return multi[0];
+    if (multi.length === 1) return multi[0] ?? "placement";
     if (multi.includes("placement") && multi.includes("government")) return "both";
     return "all";
   } catch {
@@ -139,6 +140,20 @@ export type Module = {
 
 export const modules: Module[] = [
   // --- Private-Sector Placement Track ---
+  {
+    id: "placement-tracker",
+    title: "Smart Placement Tracker",
+    tagline: "Readiness score, 8-area prep tracker, company paths & AI mentor",
+    icon: Target,
+    progress: 0,
+    highlights: [
+      "Real-data 8-category Placement Readiness Score (/100)",
+      "8-section Preparation Tracker (Completed / Ongoing / Pending)",
+      "9 Company Prep Guides + Personalized Weekly Goals & Milestones",
+      "Analytics Charts & Data-Grounded AI Placement Mentor",
+    ],
+    track: "placement",
+  },
   {
     id: "assessment",
     title: "My Assessment",
@@ -1006,374 +1021,12 @@ export function saveGovResult(r: GovQuizResult) {
 // ==========================================
 // 5. WEEKLY AI INTERVIEW MENTOR & COMMUNICATION
 // ==========================================
-export type InterviewRole =
-  | "Software Development Engineer (SDE-1)"
-  | "Data Analyst & Business Intelligence"
-  | "Frontend / Fullstack Developer"
-  | "Banking Probationary Officer (PO)"
-  | "Civil Services (UPSC / TNPSC Candidate)";
-
-export type InterviewQuestion = {
-  id: string;
-  role: InterviewRole;
-  category: "Technical" | "HR & Behavioral" | "Situational" | "Current Affairs / Problem Solving";
-  question: string;
-  keyPointsExpected: string[];
-  idealModelAnswer: string;
-};
-
-export const interviewQuestions: InterviewQuestion[] = [
-  {
-    id: "sde-1",
-    role: "Software Development Engineer (SDE-1)",
-    category: "Technical",
-    question:
-      "Can you explain how you would design a scalable URL shortener like TinyURL, and how you would handle hash collisions and high read traffic?",
-    keyPointsExpected: [
-      "Base62 encoding of an auto-incrementing ID or MD5/SHA256 truncation",
-      "Handling collisions with counter or pre-generated unique keys",
-      "Caching hot URLs with Redis (LRU eviction)",
-      "Database read replicas and sharding by hash prefix",
-    ],
-    idealModelAnswer:
-      "I would design the URL shortener using a layered microservice architecture. For generating short keys, I'd use Base62 encoding (a-z, A-Z, 0-9) over a 64-bit unique ID generator like Twitter Snowflake to prevent collisions without expensive retries. For high read traffic (typically 100:1 read to write ratio), I would front the database with a Redis cache cluster using an LRU eviction policy to keep top 20% viral URLs in memory. For persistence, a distributed NoSQL store like DynamoDB or sharded PostgreSQL allows horizontal scaling across hash ranges.",
-  },
-  {
-    id: "sde-2",
-    role: "Software Development Engineer (SDE-1)",
-    category: "HR & Behavioral",
-    question:
-      "Tell me about a time when you encountered a severe bug or production outage right before a project deadline. How did you handle it?",
-    keyPointsExpected: [
-      "STAR structure: Situation, Task, Action, Result",
-      "Calm troubleshooting under pressure",
-      "Root cause analysis and team communication",
-      "Prevention of recurrence with automated testing",
-    ],
-    idealModelAnswer:
-      "During our capstone project demo rehearsal, our payment webhook began dropping transactions due to a race condition in our database session. (Situation) As the backend lead, I had 3 hours before the faculty review to stabilize the checkout flow. (Task) I immediately set up isolated reproduction tests, pinned down the uncommitted read state, and replaced the raw query with atomic database transactions accompanied by optimistic locking. (Action) All test runs completed with zero failed checkouts, and our project received the highest evaluation grade in the cohort. Afterward, I added end-to-end integration tests to our CI/CD pipeline to catch concurrency bugs automatically. (Result)",
-  },
-  {
-    id: "analyst-1",
-    role: "Data Analyst & Business Intelligence",
-    category: "Technical",
-    question:
-      "If a company's daily active user (DAU) metric suddenly drops by 12% overnight, walk me through how you would diagnose the root cause.",
-    keyPointsExpected: [
-      "Data pipeline verification (instrumentation bug vs real user drop)",
-      "Segmentation by platform (iOS, Android, Web), geography, and user cohort",
-      "Correlation with recent code deployments, marketing campaigns, or outages",
-      "Impact on business conversion metrics and stakeholder reporting",
-    ],
-    idealModelAnswer:
-      "First, I would verify the integrity of the data pipeline—checking whether the event ingestion service or analytics logging failed before assuming user behavior changed. Second, I would segment the DAU drop across dimensions: OS version (iOS vs Android), geography, traffic source, and user cohort (new vs returning). If the drop is concentrated on Android following an app update, it points to a client-side crash or broken login. If it spans all platforms evenly in a specific country, it suggests ISP outages or regional payment gateway failures. Once pinpointed, I provide a clear incident dashboard to engineering leads and executive stakeholders.",
-  },
-  {
-    id: "bank-po-1",
-    role: "Banking Probationary Officer (PO)",
-    category: "Situational",
-    question:
-      "How would you handle an irate customer who enters your branch complaining about an unauthorized debit deduction from their savings account?",
-    keyPointsExpected: [
-      "Empathy, patience and de-escalation",
-      "Immediate security action: block debit card/net banking",
-      "Transaction audit and filing chargeback dispute",
-      "Clear timeline and reassurance without defensive tone",
-    ],
-    idealModelAnswer:
-      "I would first invite the customer to sit in a calm space and listen attentively without interrupting, acknowledging their distress with genuine empathy. Next, I would take immediate security measures: blocking their debit card and net banking access to stop further unauthorized debits. Then, I would review the Core Banking System transaction log to identify whether it was an ATM, POS, or UPI transaction, lodge an official grievance ticket, and initiate a chargeback protocol per RBI guidelines. Finally, I would provide them with a signed acknowledgment, reference number, and a direct contact timeline for resolution.",
-  },
-  {
-    id: "civil-1",
-    role: "Civil Services (UPSC / TNPSC Candidate)",
-    category: "Current Affairs / Problem Solving",
-    question:
-      "As a District Collector facing public protests over land acquisition for a public infrastructure project, what administrative steps would you take?",
-    keyPointsExpected: [
-      "Rule of law and peaceful dialogue with community elders",
-      "Transparent communication of fair compensation (LARR Act)",
-      "Addressing rehabilitation and environmental concerns",
-      "Balancing developmental urgency with social justice",
-    ],
-    idealModelAnswer:
-      "As District Collector, my priority is maintaining public order while upholding justice through empathetic administration. First, I would establish a direct dialogue forum with village heads and protest representatives rather than using police force. Second, I would ensure total transparency regarding compensation packages, R&R (Rehabilitation and Resettlement) entitlements under the RFCTLARR Act 2013, and clear grievance redressal mechanisms. Third, I would examine if minor alignment adjustments can spare sacred sites or prime agricultural pockets. Development must never be adversarial; by making citizens stakeholders in the project's long-term benefits, we achieve sustainable progress.",
-  },
-];
-
-export type InterviewEvaluation = {
-  score: number; // 0 - 100
-  speakingPaceWpm: number;
-  paceVerdict: "Optimal" | "A Bit Fast" | "Too Fast" | "A Bit Slow" | "Too Slow";
-  grammarScore: number; // 0 - 100
-  clarityScore: number; // 0 - 100
-  relevanceScore: number; // 0 - 100
-  structureScore: number; // 0 - 100 (STAR method)
-  starComponentsFound: {
-    situation: boolean;
-    task: boolean;
-    action: boolean;
-    result: boolean;
-  };
-  fillerWordCount: number;
-  fillerWordsDetected: string[];
-  strengths: string[];
-  improvements: string[];
-  recommendedDrill: string;
-};
-
-export type InterviewSession = {
-  id: string;
-  weekNumber: number;
-  date: string;
-  role: InterviewRole;
-  questionId: string;
-  question: string;
-  answerText: string;
-  isSpoken: boolean;
-  durationSec: number;
-  evaluation: InterviewEvaluation;
-};
-
-const INTERVIEWS_KEY = "cp_interview_history";
-
-export function getInterviewSessions(): InterviewSession[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const data = localStorage.getItem(INTERVIEWS_KEY);
-    if (!data) {
-      // Seed an initial week 1 session so student immediately has comparison context!
-      const initial: InterviewSession[] = [
-        {
-          id: "seed-w1",
-          weekNumber: 1,
-          date: "1 week ago",
-          role: "Software Development Engineer (SDE-1)",
-          questionId: "sde-2",
-          question:
-            "Tell me about a time when you encountered a severe bug right before a project deadline.",
-          answerText:
-            "Um, we had this bug during our college project demo. Like, the database went down. I had to fix it quickly by restarting the service and changing the database credentials. In the end it worked fine and we passed.",
-          isSpoken: true,
-          durationSec: 42,
-          evaluation: {
-            score: 64,
-            speakingPaceWpm: 105,
-            paceVerdict: "A Bit Slow",
-            grammarScore: 70,
-            clarityScore: 60,
-            relevanceScore: 70,
-            structureScore: 55,
-            starComponentsFound: {
-              situation: true,
-              task: false,
-              action: true,
-              result: true,
-            },
-            fillerWordCount: 4,
-            fillerWordsDetected: ["um", "like", "in the end"],
-            strengths: ["Honest recounting of a technical failure", "Direct problem resolution"],
-            improvements: [
-              "Reduce filler words ('um', 'like')",
-              "Apply full STAR structure: specify your exact task and quantifiable impact",
-            ],
-            recommendedDrill: "STAR Structuring & Filler Word Elimination Drill",
-          },
-        },
-      ];
-      localStorage.setItem(INTERVIEWS_KEY, JSON.stringify(initial));
-      return initial;
-    }
-    return JSON.parse(data);
-  } catch {
-    return [];
-  }
-}
-
-export function saveInterviewSession(session: InterviewSession) {
-  if (typeof window === "undefined") return;
-  try {
-    const list = [session, ...getInterviewSessions().filter((s) => s.id !== session.id)];
-    localStorage.setItem(INTERVIEWS_KEY, JSON.stringify(list));
-  } catch {
-    // ignore
-  }
-}
-
-// Algorithmic evaluation engine for spoken / typed answers
-export function evaluateInterviewAnswer(
-  question: InterviewQuestion,
-  answerText: string,
-  durationSec: number,
-  isSpoken: boolean,
-): InterviewEvaluation {
-  const words = answerText.trim().split(/\s+/).filter(Boolean);
-  const wordCount = words.length;
-  const timeInMinutes = Math.max(durationSec, 10) / 60;
-  const speakingPaceWpm = isSpoken ? Math.round(wordCount / timeInMinutes) : 135;
-
-  let paceVerdict: InterviewEvaluation["paceVerdict"] = "Optimal";
-  if (speakingPaceWpm < 95) paceVerdict = "Too Slow";
-  else if (speakingPaceWpm < 120) paceVerdict = "A Bit Slow";
-  else if (speakingPaceWpm > 175) paceVerdict = "Too Fast";
-  else if (speakingPaceWpm > 155) paceVerdict = "A Bit Fast";
-
-  // Filler words detection
-  const lower = answerText.toLowerCase();
-  const fillers = ["um", "uh", "like", "you know", "basically", "actually", "sort of", "kind of"];
-  const detectedFillers: string[] = [];
-  let fillerCount = 0;
-  for (const f of fillers) {
-    const regex = new RegExp(`\\b${f}\\b`, "gi");
-    const matches = lower.match(regex);
-    if (matches && matches.length > 0) {
-      detectedFillers.push(f);
-      fillerCount += matches.length;
-    }
-  }
-
-  // STAR methodology check
-  const situationKeywords = [
-    "situation",
-    "when",
-    "during",
-    "while",
-    "project",
-    "client",
-    "problem",
-    "faced",
-  ];
-  const taskKeywords = ["task", "responsible", "needed to", "goal", "had to", "role", "objective"];
-  const actionKeywords = [
-    "action",
-    "implemented",
-    "created",
-    "designed",
-    "optimized",
-    "solved",
-    "coded",
-    "stepped in",
-    "researched",
-  ];
-  const resultKeywords = [
-    "result",
-    "outcome",
-    "improved",
-    "reduced",
-    "increased",
-    "achieved",
-    "delivered",
-    "grade",
-    "feedback",
-  ];
-
-  const hasSituation = situationKeywords.some((k) => lower.includes(k));
-  const hasTask = taskKeywords.some((k) => lower.includes(k));
-  const hasAction = actionKeywords.some((k) => lower.includes(k));
-  const hasResult = resultKeywords.some((k) => lower.includes(k));
-
-  let structureScore = 50;
-  if (hasSituation) structureScore += 12;
-  if (hasTask) structureScore += 12;
-  if (hasAction) structureScore += 14;
-  if (hasResult) structureScore += 12;
-
-  // Relevance check against expected key points
-  let matchedPoints = 0;
-  for (const point of question.keyPointsExpected) {
-    const keyTerms = point
-      .toLowerCase()
-      .split(/\s+/)
-      .filter((w) => w.length > 3);
-    if (keyTerms.some((term) => lower.includes(term))) {
-      matchedPoints++;
-    }
-  }
-  const relevanceScore = Math.min(
-    100,
-    Math.round(40 + (matchedPoints / Math.max(question.keyPointsExpected.length, 1)) * 55),
-  );
-
-  // Clarity & Grammar scores
-  const clarityPenalty = Math.min(30, fillerCount * 5);
-  const lengthBonus = wordCount > 50 ? (wordCount > 90 ? 10 : 5) : -15;
-  const clarityScore = Math.max(45, Math.min(95, 85 - clarityPenalty + lengthBonus));
-  const grammarScore = Math.max(50, Math.min(96, 88 - (wordCount < 30 ? 15 : 0)));
-
-  const overallScore = Math.round(
-    clarityScore * 0.25 + grammarScore * 0.2 + relevanceScore * 0.3 + structureScore * 0.25,
-  );
-
-  const strengths: string[] = [];
-  const improvements: string[] = [];
-
-  if (wordCount >= 60) strengths.push("Comprehensive, well-developed response volume.");
-  if (matchedPoints >= 2)
-    strengths.push("Strong alignment with core technical & operational concepts.");
-  if (paceVerdict === "Optimal")
-    strengths.push("Pacing is natural, articulate and engaging (120-150 WPM).");
-  if (hasAction && hasResult)
-    strengths.push("Clear demonstration of personal ownership and tangible impact.");
-
-  if (fillerCount > 2) {
-    improvements.push(
-      `Reduce filler phrasing (detected: ${detectedFillers.join(", ")}). Practice deliberate silence instead of fillers.`,
-    );
-  }
-  if (!hasTask || !hasResult) {
-    improvements.push(
-      "Tighten the STAR structure: explicitly state what YOUR specific mandate was and the measurable outcome.",
-    );
-  }
-  if (paceVerdict === "Too Fast" || paceVerdict === "A Bit Fast") {
-    improvements.push(
-      "Speaking pace is fast. Take steady pauses after key sentences to let interviewers absorb complex technical ideas.",
-    );
-  } else if (paceVerdict === "Too Slow" || paceVerdict === "A Bit Slow") {
-    improvements.push(
-      "Speaking pace is hesitant. Practice speaking with confidence using bulleted mental outlines.",
-    );
-  }
-  if (matchedPoints < 2) {
-    improvements.push(
-      `Incorporate domain terminology: ${question.keyPointsExpected.slice(0, 2).join(", ")}.`,
-    );
-  }
-
-  // Personalised drill recommendation
-  let recommendedDrill = "STAR Method 60-Second Answer Workout";
-  if (fillerCount >= 3) {
-    recommendedDrill = "Pause & Enunciation: Zero-Filler Drill";
-  } else if (paceVerdict !== "Optimal") {
-    recommendedDrill = "Metronome Pacing Drill (Target 130 WPM)";
-  } else if (relevanceScore < 75) {
-    recommendedDrill = "Key Concept Synthesis & Framing Drill";
-  }
-
-  return {
-    score: overallScore,
-    speakingPaceWpm,
-    paceVerdict,
-    grammarScore,
-    clarityScore,
-    relevanceScore,
-    structureScore,
-    starComponentsFound: {
-      situation: hasSituation,
-      task: hasTask,
-      action: hasAction,
-      result: hasResult,
-    },
-    fillerWordCount: fillerCount,
-    fillerWordsDetected: detectedFillers,
-    strengths: strengths.length
-      ? strengths
-      : ["Good fundamental effort and willingness to articulate thoughts."],
-    improvements: improvements.length
-      ? improvements
-      : ["Continue refining speed and maintaining high enunciation."],
-    recommendedDrill,
-  };
-}
+export * from "./interview-engine";
+import {
+  getInterviewSessions as fetchInterviewSessions,
+  getInterviewProgressSummary as fetchInterviewProgress,
+  getSessionScoreTen as fetchSessionScoreTen,
+} from "./interview-engine";
 
 // ==========================================
 // 6. TASKS, STREAK & INTEGRATED READINESS
@@ -1384,7 +1037,43 @@ export * from "./gate-data";
 // Re-export Notification Centre service & persistence
 export * from "./notifications";
 
+// Re-export Assessments & Placement Prep service (excluding DifficultyLevel which is already exported from ./code-decoder-data)
+export {
+  type Question,
+  type AssessmentResult,
+  type AssessmentCategory,
+  type SkillTier,
+  type AssessmentQuestion,
+  type QuestionAttemptDetail,
+  type AssessmentAttemptRecord,
+  type TopicPerformanceStat,
+  type CategoryPerformanceStat,
+  type GeneratedDailyTask,
+  type PerformanceAnalytics,
+  quantMock4,
+  scoreAssessment,
+  ASSESSMENT_CATEGORIES,
+  assessmentQuestionBank,
+  difficultyToSkillTier,
+  skillTierToDifficulty,
+  getQuestionsByCategory,
+  getResults,
+  saveResult,
+  saveAssessmentAttempt,
+  getAssessmentHistory,
+  clearAssessmentHistory,
+  pickAdaptiveDifficulty,
+  buildAttemptRecord,
+  buildRecommendedPracticeSet,
+  generateDailyPracticeTasks,
+  getPerformanceAnalytics,
+} from "./assessments";
+
+// Re-export Smart Placement Tracker & Readiness Dashboard service
+export * from "./placement-engine";
+
 import { getGateResults as fetchGateResults } from "./gate-data";
+import { getPerformanceAnalytics as fetchAssessmentAnalytics } from "./assessments";
 
 export type Task = {
   id: string;
@@ -1411,7 +1100,7 @@ export const dailyTasks: Task[] = [
   },
   {
     id: "t3",
-    title: "Weekly AI Interview: Complete Week 2 simulated interview",
+    title: "AI Interview Mentor: Complete an adaptive mock interview round",
     module: "interview-mentor",
     minutes: 15,
     track: "core",
@@ -1461,15 +1150,24 @@ export const overallReadiness = 73;
 export function getIntegratedMetrics() {
   const pathway = getPathway();
   const selectedPathways = getSelectedPathways();
-  const interviews = getInterviewSessions();
+  const interviews = fetchInterviewSessions();
+  const interviewProgress = fetchInterviewProgress(interviews);
   const govResults = getGovResults();
   const gateResults = fetchGateResults();
+  const assessmentStats = fetchAssessmentAnalytics();
 
-  // Latest interview score
+  // Latest interview score from actual sessions (0 when none completed)
   const latestInterview = interviews[0];
   const interviewAvg = interviews.length
-    ? Math.round(interviews.reduce((acc, i) => acc + i.evaluation.score, 0) / interviews.length)
-    : 68;
+    ? Math.round(
+        interviews.reduce((acc, i) => acc + Math.round(fetchSessionScoreTen(i) * 10), 0) /
+          interviews.length,
+      )
+    : 0;
+
+  // Assessment accuracy / score average from real attempts (0 when none taken, no fake fixed score in metrics)
+  const assessmentAvg =
+    assessmentStats.totalQuestionsAttempted > 0 ? assessmentStats.overallAccuracy : 0;
 
   // Gov quiz average
   const govAvg = govResults.length
@@ -1487,7 +1185,7 @@ export function getIntegratedMetrics() {
       )
     : 70;
 
-  // Weak areas calculation from actual interview, gov quiz & GATE history
+  // Weak areas calculation from actual assessment, interview, gov quiz & GATE history
   const weakAreas: {
     topic: string;
     score: number;
@@ -1495,19 +1193,37 @@ export function getIntegratedMetrics() {
     track: "placement" | "government" | "gate";
   }[] = [];
 
-  if (latestInterview && latestInterview.evaluation.speakingPaceWpm > 160) {
+  for (const w of assessmentStats.weaknesses.slice(0, 4)) {
     weakAreas.push({
-      topic: "Speaking Pace & Enunciation",
-      score: 62,
-      reason: `Current pace is ${latestInterview.evaluation.speakingPaceWpm} WPM (too fast). Needs pause control.`,
+      topic: w.topic,
+      score: w.accuracy,
+      reason: `${w.correct}/${w.attempted} correct across recent placement assessments.`,
       track: "placement",
     });
   }
-  if (latestInterview && latestInterview.evaluation.fillerWordCount > 2) {
+
+  for (const struggle of interviewProgress.repeatedStruggles.slice(0, 2)) {
+    weakAreas.push({
+      topic: `Interview: ${struggle.area}`,
+      score: Math.round(struggle.avgScoreTen * 10),
+      reason: `Flagged across ${struggle.occurrences} mock interview${struggle.occurrences > 1 ? "s" : ""} (avg ${struggle.avgScoreTen}/10).`,
+      track: "placement",
+    });
+  }
+
+  if ((latestInterview?.evaluation?.speakingPaceWpm ?? 0) > 160) {
+    weakAreas.push({
+      topic: "Speaking Pace & Enunciation",
+      score: 62,
+      reason: `Current pace is ${latestInterview!.evaluation.speakingPaceWpm} WPM (too fast). Needs pause control.`,
+      track: "placement",
+    });
+  }
+  if ((latestInterview?.evaluation?.fillerWordCount ?? 0) > 2) {
     weakAreas.push({
       topic: "Filler Word Elimination",
       score: 58,
-      reason: `Detected ${latestInterview.evaluation.fillerWordCount} fillers in recent mock interview.`,
+      reason: `Detected ${latestInterview!.evaluation.fillerWordCount} fillers in recent mock interview.`,
       track: "placement",
     });
   }
@@ -1515,8 +1231,8 @@ export function getIntegratedMetrics() {
   // Topic accuracies from Gov exams
   if (govResults.length) {
     for (const res of govResults) {
-      for (const [topic, stats] of Object.entries(res.topicAccuracies)) {
-        const pct = Math.round((stats.correct / stats.total) * 100);
+      for (const [topic, stats] of Object.entries(res?.topicAccuracies || {})) {
+        const pct = Math.round((stats.correct / Math.max(stats.total, 1)) * 100);
         if (pct < 60) {
           weakAreas.push({
             topic,
@@ -1582,7 +1298,12 @@ export function getIntegratedMetrics() {
   // Calculate integrated readiness
   const readinessComponents: number[] = [];
   if (selectedPathways.includes("placement")) {
-    readinessComponents.push(75, interviewAvg);
+    if (assessmentStats.totalQuestionsAttempted > 0) {
+      readinessComponents.push(assessmentAvg);
+    }
+    if (interviews.length > 0) {
+      readinessComponents.push(interviewAvg);
+    }
   }
   if (selectedPathways.includes("government")) {
     readinessComponents.push(govAvg);
@@ -1592,12 +1313,15 @@ export function getIntegratedMetrics() {
   }
   const readiness = readinessComponents.length
     ? Math.round(readinessComponents.reduce((a, b) => a + b, 0) / readinessComponents.length)
-    : 73;
+    : 0;
 
   return {
     pathway,
     selectedPathways,
     interviewAvg,
+    interviewProgress,
+    assessmentAvg,
+    assessmentStats,
     govAvg,
     gateAvg,
     latestInterview,

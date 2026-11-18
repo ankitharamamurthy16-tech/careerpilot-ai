@@ -27,6 +27,10 @@ import {
   getIntegratedMetrics,
   getCompletedTaskIds,
   setTaskCompleted,
+  calculatePlacementReadiness,
+  loadPlacementTracker,
+  loadWeeklyPlacementGoals,
+  evaluatePlacementMilestones,
   streak,
   skills,
   type PreparationPathway,
@@ -65,12 +69,25 @@ function Dashboard() {
     "gate",
   ]);
   const [done, setDone] = useState<string[]>([]);
-  const [metrics, setMetrics] = useState(getIntegratedMetrics());
+  const [metrics, setMetrics] = useState(() => getIntegratedMetrics());
+  const [placementReadiness, setPlacementReadiness] = useState(() =>
+    calculatePlacementReadiness(student?.email),
+  );
+  const [trackerSummary, setTrackerSummary] = useState(() => loadPlacementTracker(student?.email));
+  const [goalsSummary, setGoalsSummary] = useState(() => loadWeeklyPlacementGoals(student?.email));
+  const [milestonesSummary, setMilestonesSummary] = useState(() =>
+    evaluatePlacementMilestones(student?.email),
+  );
 
   useEffect(() => {
+    const currentEmail = getStudent()?.email;
     setSelectedPathwaysState(getSelectedPathways());
     setMetrics(getIntegratedMetrics());
     setDone(getCompletedTaskIds());
+    setPlacementReadiness(calculatePlacementReadiness(currentEmail));
+    setTrackerSummary(loadPlacementTracker(currentEmail));
+    setGoalsSummary(loadWeeklyPlacementGoals(currentEmail));
+    setMilestonesSummary(evaluatePlacementMilestones(currentEmail));
   }, []);
 
   const handleTogglePathway = (p: PathwayType) => {
@@ -98,7 +115,7 @@ function Dashboard() {
     if (!isDone) toast.success("Task completed — great progress!");
   };
 
-  const first = student?.name.split(" ")[0] ?? "Student";
+  const first = student?.name?.trim()?.split(" ")[0] || "Student";
 
   return (
     <div>
@@ -184,7 +201,7 @@ function Dashboard() {
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider opacity-75">
               {selectedPathways.length === 1
-                ? `${selectedPathways[0].toUpperCase()} Track Readiness`
+                ? `${(selectedPathways[0] ?? "placement").toUpperCase()} Track Readiness`
                 : "Integrated Multi-Track Readiness"}
             </p>
             <p className="font-display text-lg font-bold">
@@ -211,18 +228,20 @@ function Dashboard() {
               <div>
                 <div className="flex items-center gap-2">
                   <span className="rounded-full bg-violet/20 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-violet">
-                    Week 2 Simulated Round
+                    {metrics.interviewProgress.totalInterviews > 0
+                      ? `${metrics.interviewProgress.totalInterviews} Mock Round${metrics.interviewProgress.totalInterviews > 1 ? "s" : ""} Logged`
+                      : "Adaptive AI Interviewer"}
                   </span>
                   <span className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
                     <Clock className="h-3 w-3" /> 10-15 mins
                   </span>
                 </div>
                 <h3 className="font-display mt-1 text-base font-bold">
-                  Weekly AI Interview Mentor
+                  AI Placement Interview Mentor
                 </h3>
                 <p className="mt-0.5 text-xs text-muted-foreground">
-                  Spoken voice & typed evaluations with speech pace (WPM), STAR answer structure,
-                  and grammar feedback.
+                  Adaptive 5-category mock interviews with follow-up probes, voice or text answers,
+                  and 5-dimension evaluation out of 10.
                 </p>
               </div>
             </div>
@@ -241,25 +260,95 @@ function Dashboard() {
           {metrics.latestInterview && (
             <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border/60 bg-card/75 p-3 text-xs">
               <span className="font-medium text-muted-foreground">
-                Last Interview (Week {metrics.latestInterview.weekNumber}):
+                Last Interview ({metrics.latestInterview.category ?? metrics.latestInterview.role} •{" "}
+                {metrics.latestInterview.completionStatus ?? "Completed"}):
               </span>
               <div className="flex items-center gap-3">
                 <span className="font-bold text-primary">
-                  Score: {metrics.latestInterview.evaluation.score}/100
+                  Score:{" "}
+                  {metrics.latestInterview.overallScoreTen ??
+                    Math.round(metrics.latestInterview.evaluation?.score ?? 0) / 10}
+                  /10
                 </span>
                 <span>•</span>
                 <span className="font-semibold text-foreground">
-                  Pace: {metrics.latestInterview.evaluation.speakingPaceWpm} WPM (
-                  {metrics.latestInterview.evaluation.paceVerdict})
+                  Pace: {metrics.latestInterview.evaluation?.speakingPaceWpm ?? 0} WPM (
+                  {metrics.latestInterview.evaluation?.paceVerdict ?? "N/A"})
                 </span>
                 <span>•</span>
                 <span className="text-muted-foreground">
-                  Fillers: {metrics.latestInterview.evaluation.fillerWordCount}
+                  Fillers: {metrics.latestInterview.evaluation?.fillerWordCount ?? 0}
                 </span>
               </div>
             </div>
           )}
         </section>
+
+        {/* Smart Placement Tracker & Readiness Dashboard Highlight */}
+        {selectedPathways.includes("placement") && (
+          <section className="rounded-2xl border border-primary/25 bg-card p-5 shadow-card">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-3">
+                <span className="rounded-xl bg-primary/10 p-2.5 text-primary">
+                  <Target className="h-5 w-5" />
+                </span>
+                <div>
+                  <h3 className="font-display font-bold">
+                    Smart Placement Tracker & Readiness Dashboard
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    8-pillar readiness ({placementReadiness.readinessTier}) · 9 Company Guides ·
+                    Weekly Goals · AI Placement Mentor
+                  </p>
+                </div>
+              </div>
+              <Link
+                to="/app/modules/$id"
+                params={{ id: "placement-tracker" }}
+                className="bg-brand shadow-glow inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold text-white transition hover:opacity-95"
+              >
+                <span>Open Placement Tracker</span>
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+
+            <div className="mt-3.5 grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <div className="rounded-xl bg-muted/60 p-2.5 text-center">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Readiness Score
+                </p>
+                <p className="font-display text-base font-bold tabular-nums text-primary">
+                  {placementReadiness.overallScore} / 100
+                </p>
+              </div>
+              <div className="rounded-xl bg-muted/60 p-2.5 text-center">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Active Pillars
+                </p>
+                <p className="font-display text-base font-bold tabular-nums text-foreground">
+                  {8 - placementReadiness.incompleteCount} / 8
+                </p>
+              </div>
+              <div className="rounded-xl bg-muted/60 p-2.5 text-center">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Prep Tracker
+                </p>
+                <p className="font-display text-base font-bold tabular-nums text-foreground">
+                  {trackerSummary.completedCount} / {trackerSummary.totalActivities}
+                </p>
+              </div>
+              <div className="rounded-xl bg-muted/60 p-2.5 text-center">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Goals & Badges
+                </p>
+                <p className="font-display text-base font-bold tabular-nums text-foreground">
+                  {goalsSummary.goals.filter((g) => g.completed).length} goals ·{" "}
+                  {milestonesSummary.filter((m) => m.unlocked).length} unlocked
+                </p>
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* Government Exam Track Highlight (if active) */}
         {selectedPathways.includes("government") && (
@@ -546,9 +635,15 @@ function Dashboard() {
                   <p className="mt-1 line-clamp-2 text-[11px] text-muted-foreground">{m.tagline}</p>
                 </div>
                 <div className="mt-4">
-                  <Progress value={m.progress} className="h-1.5" />
+                  <Progress
+                    value={
+                      m.id === "placement-tracker" ? placementReadiness.overallScore : m.progress
+                    }
+                    className="h-1.5"
+                  />
                   <p className="mt-1.5 text-[10px] font-semibold text-muted-foreground">
-                    {m.progress}% complete
+                    {m.id === "placement-tracker" ? placementReadiness.overallScore : m.progress}%
+                    complete
                   </p>
                 </div>
               </Link>

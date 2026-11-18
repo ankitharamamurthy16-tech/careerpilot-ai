@@ -1704,6 +1704,9 @@ export function saveDecoderProgress(
     const all = getDecoderProgress(email);
     const existing = all[questionId];
     const attemptCount = (existing?.attemptCount || 0) + 1;
+    const resolvedSolvedAt = isSolved
+      ? existing?.solvedAt || new Date().toISOString()
+      : existing?.solvedAt;
     const record: QuestionAttemptRecord = {
       questionId,
       language,
@@ -1714,7 +1717,7 @@ export function saveDecoderProgress(
       revealedAnswer: revealedAnswer || !!existing?.revealedAnswer,
       revealedExplanation: revealedExplanation || !!existing?.revealedExplanation,
       revealedHint: revealedHint || !!existing?.revealedHint,
-      solvedAt: isSolved ? existing?.solvedAt || new Date().toISOString() : existing?.solvedAt,
+      ...(resolvedSolvedAt !== undefined ? { solvedAt: resolvedSolvedAt } : {}),
       lastAttemptAt: new Date().toISOString(),
     };
     all[questionId] = record;
@@ -1926,7 +1929,7 @@ export function getDecoderStats(userEmail?: string): DecoderOverallStats {
     byDifficulty,
     topics,
     studentEmail: email,
-    studentName,
+    ...(studentName !== undefined ? { studentName } : {}),
   };
 }
 

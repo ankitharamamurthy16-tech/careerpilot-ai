@@ -1,13 +1,25 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { CheckCircle2, Circle, Map, Sparkles, Target, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { Progress } from "@/components/Brand";
+import { getExplicitRoadmapCompletedIds, saveRoadmapCompletedIds } from "@/lib/data";
 
 export function RoadmapModule() {
   const [completed, setCompleted] = useState<string[]>(["m1", "m2", "m3", "m5", "m7"]);
 
+  useEffect(() => {
+    const saved = getExplicitRoadmapCompletedIds();
+    if (saved) {
+      setCompleted(saved);
+    }
+  }, []);
+
   const toggle = (id: string) => {
-    setCompleted((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+    setCompleted((prev) => {
+      const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
+      saveRoadmapCompletedIds(next);
+      return next;
+    });
     if (!completed.includes(id)) toast.success("Milestone achieved!");
   };
 
